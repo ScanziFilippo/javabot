@@ -1,5 +1,7 @@
 package it.paleocapa.mastroiannim;
 
+import java.util.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,21 +42,57 @@ public class JavaBossBot extends TelegramLongPollingBot {
 		//LOG.info(System.getenv("telegram.token"));
 		return botToken;
 	}
-
+	LinkedList<String> lista = null;
+    List<String> menu = Arrays.asList("Pizza", "Panino", "Piadina", "Arancino", "Bonacina");
 	public void onUpdateReceived(Update update) {
-		if (update.hasMessage() && update.getMessage().hasText()) {
-			
-			long chatId = update.getMessage().getChatId();
-			
-			SendMessage message = new SendMessage();
-			message.setChatId(chatId);
-			message.setText("Benvenuto! Come posso aiutarti?");
-			
-			try {
-				execute(message);
-			} catch (TelegramApiException e) {
-				e.printStackTrace();
-			}
-		}
+		
+		long chatId = update.getMessage().getChatId();
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+		String t;
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            switch(update.getMessage().getText().toLowerCase()){
+                case "/start":
+                    message.setText("Benvenuto! Come posso aiutarti?");
+                    break;
+                case "ciao":
+                    message.setText("Ciao anche a te!");
+                    break;
+                case "/crea":
+                    t = "Creo lista...";
+                    if(lista == null){
+                        lista = new LinkedList<>();
+                        t += " Fatto.";
+                    }else{
+                        t += " Lista già creata in precedenza.";
+                    }
+                    message.setText(t);
+                    break;
+				case "panino":
+					message.setText("Panino aggiunto alla lista");
+					break;
+				case "piadina":
+					message.setText("Panino aggiunto alla lista");
+					break;
+				case "pizza":
+					message.setText("Panino aggiunto alla lista");
+					break;
+				case "/menu":
+					t = menu.stream().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+					message.setText(t);
+					break;
+                default:
+                    message.setText("Scusa, non capisco");
+            }
+            
+        }else{
+            message.setText("Scusa, non capisco");
+        }
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
 	}
 }

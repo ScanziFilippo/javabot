@@ -1,6 +1,7 @@
 package it.paleocapa.mastroiannim;
 
 import java.util.*;
+import static java.util.Map.*;    
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +59,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 		}
 		try
 		{
-			int num = Integer.parseInt(prezzo);
+			double num = Double.parseDouble(prezzo);
 			return Arrays.asList(prodotto.toLowerCase(), num);
 		}
 		catch (NumberFormatException e)
@@ -66,12 +67,43 @@ public class JavaBossBot extends TelegramLongPollingBot {
 			return Arrays.asList(prodotto.toLowerCase(), null);
 		}
 	}
-	public int resto(String prodotto, Integer pagato){
-		Map<String, Integer> prezzi = Map.of(
-			"panino", 2,
-			"pizza", 6,
-			"bonacina", 0
+	Map<String, Double> prezzi = Map.ofEntries(
+			entry("brioche-cioccolato", 0.90), 
+			entry("brioche-marmellata", 0.90), 
+			entry("brioche-vuota", 0.90), 
+			entry("panino-wurstel", 1.50), 
+			entry("panino-cotoletta", 2.00), 
+			entry("hamburger", 2.00), 
+			entry("panino-gourmet", 2.00), 
+			entry("piadina-cotto-fontina", 2.00),
+			entry("speck-brie", 1.50), 
+			entry("piadina-wurstel-patatine-mayo", 2.50), 
+			entry("piadina-wurstel-patatine-ketchup", 2.50), 
+			entry("piadina-cotoletta-patatine-mayo", 2.80), 
+			entry("piadina-cotoletta-patatine-ketchup", 2.80),
+			entry("pizza-piegata", 1.50), 
+			entry("panzerotto", 2.00), 
+			entry("calzone", 2.00), 
+			entry("toast-patate", 3.00), 
+			entry("ventaglio", 2.00), 
+			entry("panino-cordon-bleau", 2.00), 
+			entry("lattina-the-san-benedetto-pesca", 0.60), 
+			entry("lattina-the-san-benedetto-limone", 0.60), 
+			entry("lattina-pepsi-limone", 0.60), 
+			entry("bottiglia-acqua-naturale", 1.00), 
+			entry("bottiglia-acqua-frizzante", 1.00), 
+			entry("bottiglia-the-san-benedetto-pesca", 1.00), 
+			entry("bottiglia-the-san-benedetto-limone", 1.00), 
+			entry("bottiglia-pepsi-limone", 1.00), 
+			entry("bottiglia-pepsi", 1.00), 
+			entry("menu-pizza-bibita", 6.00), 
+			entry("menu-pasta", 5.00), 
+			entry("menu-lasagna", 5.00), 
+			entry("menu-insalata", 5.00), 
+			entry("menu-cotoletta", 5.00), 
+			entry("menu-riso", 5.00)
 		);
+	public Double resto(String prodotto, Double pagato){
 		return pagato - prezzi.get(prodotto.toLowerCase());
 	}
 	LinkedList<String> lista = new LinkedList<String>();
@@ -101,17 +133,17 @@ public class JavaBossBot extends TelegramLongPollingBot {
 					}
 					break;
 				case "/menu":
-					t = menu.stream().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+					t = prezzi.values().stream().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
 					message.setText(t);
 					break;
                 default:
 					List<Object> prova = traduci(update.getMessage().getText());
 					String prodotto = prova.get(0).toString();
-					Integer pagato = Integer.parseInt(prova.get(1).toString());
-					if((prova.get(1).equals(null))){
+					if((prova.get(1) == null)){
 						message.setText("Scusa, non capisco");
-					}else{
-						message.setText("Bene, aggiungo " + prova.get(0) + " pagando €" + prova.get(1) + ".\nAvrai resto " + resto(prodotto, pagato));
+ 					}else{
+						Double pagato = Double.parseDouble(prova.get(1).toString());
+						message.setText("Bene, aggiungo " + prova.get(0) + " pagando €" + prova.get(1) + ".\nAvrai resto €" + resto(prodotto, pagato));
 						lista.add(prodotto);
 					}
             }            

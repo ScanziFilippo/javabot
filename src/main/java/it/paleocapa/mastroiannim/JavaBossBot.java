@@ -42,7 +42,39 @@ public class JavaBossBot extends TelegramLongPollingBot {
 		//LOG.info(System.getenv("telegram.token"));
 		return botToken;
 	}
-	LinkedList<String> lista = null;
+	public List<Object> traduci(String stringa){
+		String prodotto = "";
+		int i;
+		String prezzo = "";
+		for(i = 0; i < stringa.length(); i++){
+			if(stringa.charAt(i) != ' '){
+				prodotto += stringa.charAt(i);
+			}else{
+				break;
+			}
+		}
+		for(i = i+1; i < stringa.length(); i++){
+			prezzo += stringa.charAt(i);
+		}
+		try
+		{
+			int num = Integer.parseInt(prezzo);
+			return Arrays.asList(prodotto.toLowerCase(), num);
+		}
+		catch (NumberFormatException e)
+		{
+			return Arrays.asList(prodotto.toLowerCase(), null);
+		}
+	}
+	public int resto(String prodotto, Integer pagato){
+		Map<String, Integer> prezzi = Map.of(
+			"panino", 2,
+			"pizza", 6,
+			"bonacina", 0
+		);
+		return pagato - prezzi.get(prodotto.toLowerCase());
+	}
+	LinkedList<String> lista = new LinkedList<String>();
     List<String> menu = Arrays.asList("Pizza", "Panino", "Piadina", "Arancino", "Bonacina");
 	public void onUpdateReceived(Update update) {
 		
@@ -51,6 +83,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
         message.setChatId(chatId);
 		String t;
         if (update.hasMessage() && update.getMessage().hasText()) {
+			
             switch(update.getMessage().getText().toLowerCase()){
                 case "/start":
                     message.setText("Benvenuto! Come posso aiutarti?");
@@ -58,33 +91,30 @@ public class JavaBossBot extends TelegramLongPollingBot {
                 case "ciao":
                     message.setText("Ciao anche a te!");
                     break;
-                case "/crea":
-                    t = "Creo lista...";
-                    if(lista == null){
-                        lista = new LinkedList<>();
-                        t += " Fatto.";
-                    }else{
-                        t += " Lista già creata in precedenza.";
-                    }
-                    message.setText(t);
-                    break;
-				case "panino":
-					message.setText("Panino aggiunto alla lista");
-					break;
-				case "piadina":
-					message.setText("Panino aggiunto alla lista");
-					break;
-				case "pizza":
-					message.setText("Panino aggiunto alla lista");
+				case "/lista":
+					if(lista.size() <= 0){
+						message.setText("Lista vuota.");
+					}else{
+						t = lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+						message.setText(t);
+						break;
+					}
 					break;
 				case "/menu":
 					t = menu.stream().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
 					message.setText(t);
 					break;
                 default:
-                    message.setText("Scusa, non capisco");
-            }
-            
+					List<Object> prova = traduci(update.getMessage().getText());
+					String prodotto = prova.get(0).toString();
+					Integer pagato = Integer.parseInt(prova.get(1).toString());
+					if((prova.get(1).equals(null))){
+						message.setText("Scusa, non capisco");
+					}else{
+						message.setText("Bene, aggiungo " + prova.get(0) + " pagando €" + prova.get(1) + ".\nAvrai resto " + resto(prodotto, pagato));
+						lista.add(prodotto);
+					}
+            }            
         }else{
             message.setText("Scusa, non capisco");
         }

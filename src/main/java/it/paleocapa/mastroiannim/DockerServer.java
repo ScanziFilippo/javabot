@@ -24,7 +24,6 @@ public class DockerServer {
         SpringApplication.run(DockerServer.class, args);
     }
 
-
     @EventListener(ApplicationReadyEvent.class)
     public void applicationReady() {
 

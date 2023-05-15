@@ -106,6 +106,8 @@ public class JavaBossBot extends TelegramLongPollingBot {
 	public Double resto(String prodotto, Double pagato){
 		return pagato - prezzi.get(prodotto.toLowerCase());
 	}
+	Double totale = 0.0;
+	Double restoTotale = 0.0;
 	LinkedList<String> lista = new LinkedList<String>();
     List<String> menu = Arrays.asList("Pizza", "Panino", "Piadina", "Arancino", "Bonacina");
 	public void onUpdateReceived(Update update) {
@@ -125,26 +127,33 @@ public class JavaBossBot extends TelegramLongPollingBot {
                     break;
 				case "/lista":
 					if(lista.size() <= 0){
-						message.setText("Lista vuota.");
+						message.setText("Lista vuota");
 					}else{
 						t = lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+						t += "\nTotale da pagare: €" + (totale - restoTotale) + "\nResto totale: €" + (restoTotale); 
 						message.setText(t);
 						break;
 					}
 					break;
 				case "/menu":
-					t = prezzi.values().stream().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+					t = prezzi.keySet().stream().sorted().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
 					message.setText(t);
 					break;
                 default:
 					List<Object> prova = traduci(update.getMessage().getText());
 					String prodotto = prova.get(0).toString();
-					if((prova.get(1) == null)){
+					if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
 						message.setText("Scusa, non capisco");
  					}else{
 						Double pagato = Double.parseDouble(prova.get(1).toString());
-						message.setText("Bene, aggiungo " + prova.get(0) + " pagando €" + prova.get(1) + ".\nAvrai resto €" + resto(prodotto, pagato));
-						lista.add(prodotto);
+						if(resto(prodotto, pagato) >= 0){
+							message.setText("Bene, aggiungo " + prova.get(0) + " pagando €" + prova.get(1) + ".\nAvrai resto €" + resto(prodotto, pagato));
+							lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
+							totale += pagato;
+							restoTotale += resto(prodotto, pagato);
+						}else{
+							message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + " ma vuoi pagare solo con €" + prova.get(1) + " 😠");
+						}
 					}
             }            
         }else{

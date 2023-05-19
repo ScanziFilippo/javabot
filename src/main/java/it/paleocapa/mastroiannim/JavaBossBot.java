@@ -1,8 +1,9 @@
 package it.paleocapa.mastroiannim;
 
 import java.util.*;
-import static java.util.Map.*;    
+import static java.util.Map.*;
 
+import org.apache.tomcat.util.bcel.Const;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Service
@@ -106,18 +108,20 @@ public class JavaBossBot extends TelegramLongPollingBot {
 	public Double resto(String prodotto, Double pagato){
 		return pagato - prezzi.get(prodotto.toLowerCase());
 	}
+
+	@Value("${segreto}") 
+	String segreto;
+	boolean amministratore = false;
 	Double totale = 0.0;
 	Double restoTotale = 0.0;
 	LinkedList<String> lista = new LinkedList<String>();
-    List<String> menu = Arrays.asList("Pizza", "Panino", "Piadina", "Arancino", "Bonacina");
 	public void onUpdateReceived(Update update) {
-		
+		ReplyKeyboardMarkup tastiera = new ReplyKeyboardMarkup();
 		long chatId = update.getMessage().getChatId();
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
 		String t;
         if (update.hasMessage() && update.getMessage().hasText()) {
-			
             switch(update.getMessage().getText().toLowerCase()){
                 case "/start":
                     message.setText("Benvenuto! Come posso aiutarti?");
@@ -130,7 +134,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						message.setText("Lista vuota");
 					}else{
 						t = lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
-						t += "\nTotale da pagare: €" + (totale - restoTotale) + "\nResto totale: €" + (restoTotale); 
+						t += "\nTotale pagato: €" + totale + "0\nTotale da pagare: €" + (totale - restoTotale) + "0\nResto totale: €" + (restoTotale) + "0"; 
 						message.setText(t);
 						break;
 					}
@@ -139,21 +143,42 @@ public class JavaBossBot extends TelegramLongPollingBot {
 					t = prezzi.keySet().stream().sorted().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
 					message.setText(t);
 					break;
+				case "/azzerra":
+					if(amministratore){
+						lista = new LinkedList<String>();
+						totale = 0.0;
+						restoTotale = 0.0;
+						message.setText("Lista azzerata");
+					}else{
+						message.setText("Devi essere amministratore per farlo");
+					}
+					break;
                 default:
-					List<Object> prova = traduci(update.getMessage().getText());
-					String prodotto = prova.get(0).toString();
-					if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
-						message.setText("Scusa, non capisco");
- 					}else{
-						Double pagato = Double.parseDouble(prova.get(1).toString());
-						if(resto(prodotto, pagato) >= 0){
-							message.setText("Bene, aggiungo " + prova.get(0) + " pagando €" + prova.get(1) + ".\nAvrai resto €" + resto(prodotto, pagato));
-							lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
-							totale += pagato;
-							restoTotale += resto(prodotto, pagato);
+					if(update.getMessage().getText().toLowerCase().equals(segreto)){
+						if(amministratore){
+							amministratore = false;
+							message.setText("Ora non sei più amministratore");
 						}else{
-							message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + " ma vuoi pagare solo con €" + prova.get(1) + " 😠");
+							amministratore = true;
+							message.setText("Ora sei amministratore");
 						}
+					}
+					else{
+						List<Object> prova = traduci(update.getMessage().getText());
+						String prodotto = prova.get(0).toString();
+						if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
+							message.setText("Scusa, non capisco");
+						 }else{
+							Double pagato = Double.parseDouble(prova.get(1).toString());
+							if(resto(prodotto, pagato) >= 0){
+								message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
+								lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
+								totale += pagato;
+								restoTotale += resto(prodotto, pagato);
+							}else{
+								message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
+							}
+						}	
 					}
             }            
         }else{

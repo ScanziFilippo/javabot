@@ -13,7 +13,8 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.*;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Service
@@ -112,75 +113,178 @@ public class JavaBossBot extends TelegramLongPollingBot {
 	@Value("${segreto}") 
 	String segreto;
 	boolean amministratore = false;
-	Double totale = 0.0;
-	Double restoTotale = 0.0;
-	LinkedList<String> lista = new LinkedList<String>();
+	String stato = "";
+	String classe;
+	boolean acceduto = false;
+	HashMap<String, Classe> classi = new HashMap<>();
+	HashMap<String, String> segreti = new HashMap<>();
 	public void onUpdateReceived(Update update) {
-		ReplyKeyboardMarkup tastiera = new ReplyKeyboardMarkup();
 		long chatId = update.getMessage().getChatId();
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
 		String t;
+
+		ReplyKeyboardMarkup tastiera = new ReplyKeyboardMarkup();
+		tastiera.setSelective(true);
+		tastiera.setResizeKeyboard(true);
+		tastiera.setOneTimeKeyboard(false);
+
+		KeyboardRow riga = new KeyboardRow();
+		KeyboardRow riga2 = new KeyboardRow();
+		KeyboardButton pulsante = new KeyboardButton("/accedi");
+		
         if (update.hasMessage() && update.getMessage().hasText()) {
-            switch(update.getMessage().getText().toLowerCase()){
-                case "/start":
-                    message.setText("Benvenuto! Come posso aiutarti?");
-                    break;
-                case "ciao":
-                    message.setText("Ciao anche a te!");
-                    break;
-				case "/lista":
-					if(lista.size() <= 0){
-						message.setText("Lista vuota");
-					}else{
-						t = lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
-						t += "\nTotale pagato: €" + totale + "0\nTotale da pagare: €" + (totale - restoTotale) + "0\nResto totale: €" + (restoTotale) + "0"; 
-						message.setText(t);
+			if(stato != ""){
+				switch (stato) {
+					case "creazione":
+						if(classi.get(update.getMessage().getText().toLowerCase()) == null){
+							classi.put(update.getMessage().getText().toLowerCase(), new Classe(update.getMessage().getText().toLowerCase()));
+							classe = update.getMessage().getText().toLowerCase();
+							message.setText("Classe " + update.getMessage().getText().toLowerCase() + " creata.\nOra crea il codice per accederci");
+							stato = "creazione2";
+						}else{
+							message.setText("Ora inserisci il codice per " + update.getMessage().getText().toLowerCase());
+							classe = update.getMessage().getText().toLowerCase();
+							stato = "segreto";
+						}
+						ReplyKeyboardRemove tastieraa = new ReplyKeyboardRemove(true);
+						message.setReplyMarkup(tastieraa);
+						break;
+					case "creazione2":
+						segreti.put(classe, update.getMessage().getText().toLowerCase());
+						acceduto = true;
+						stato = "";
+						riga.add(new KeyboardButton("/menu"));
+						riga.add(new KeyboardButton("/lista"));
+						riga.add(new KeyboardButton("/azzerra"));	
+						riga2.add(new KeyboardButton("/esci"));	
+						riga.remove(pulsante);
+						tastiera.setKeyboard(List.of(riga, riga2));
+						message.setReplyMarkup(tastiera);
+						message.setText("Fatto");
+						break;
+					case "segreto":
+						if(update.getMessage().getText().toLowerCase().equals(segreti.get(classe))){
+							message.setText("Acceduto con successo");
+							acceduto = true;
+							riga.add(new KeyboardButton("/menu"));
+							riga.add(new KeyboardButton("/lista"));
+							riga.add(new KeyboardButton("/azzerra"));	
+							riga2.add(new KeyboardButton("/esci"));	
+							riga.remove(pulsante);
+							tastiera.setKeyboard(List.of(riga, riga2));
+							message.setReplyMarkup(tastiera);
+							stato = "";
+						}else{
+							message.setText("Riprova");
+						}
+						break;
+					default:
 						break;
 					}
-					break;
-				case "/menu":
-					t = prezzi.keySet().stream().sorted().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
-					message.setText(t);
-					break;
-				case "/azzerra":
-					if(amministratore){
-						lista = new LinkedList<String>();
-						totale = 0.0;
-						restoTotale = 0.0;
-						message.setText("Lista azzerata");
-					}else{
-						message.setText("Devi essere amministratore per farlo");
-					}
-					break;
-                default:
-					if(update.getMessage().getText().toLowerCase().equals(segreto)){
-						if(amministratore){
-							amministratore = false;
-							message.setText("Ora non sei più amministratore");
+			}else if(acceduto){
+				switch(update.getMessage().getText().toLowerCase()){
+					case "/start":
+						message.setText("Benvenuto! Come posso aiutarti?");
+						message.setReplyMarkup(tastiera);
+						break;
+					case "ciao":
+						message.setText("Ciao anche a te!");
+						break;
+					case "/esci":
+						message.setText("Disconesso da " + classe);
+						classe = null;
+						acceduto = false;
+						riga.add(new KeyboardButton("/accedi"));
+						tastiera.setKeyboard(List.of(riga));
+						message.setReplyMarkup(tastiera);
+						break;
+					case "/lista":
+						if(classi.get(classe).lista.size() <= 0){
+							message.setText("Lista vuota");
 						}else{
-							amministratore = true;
-							message.setText("Ora sei amministratore");
+							t = classi.get(classe).lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+							t += "\nTotale pagato: €" + classi.get(classe).totale + "0\nTotale da pagare: €" + (classi.get(classe).totale - classi.get(classe).restoTotale) + "0\nResto totale: €" + (classi.get(classe).restoTotale) + "0"; 
+							message.setText(t);
+							break;
 						}
-					}
-					else{
-						List<Object> prova = traduci(update.getMessage().getText());
-						String prodotto = prova.get(0).toString();
-						if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
-							message.setText("Scusa, non capisco");
-						 }else{
-							Double pagato = Double.parseDouble(prova.get(1).toString());
-							if(resto(prodotto, pagato) >= 0){
-								message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
-								lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
-								totale += pagato;
-								restoTotale += resto(prodotto, pagato);
+						break;
+					case "/menu":
+						t = prezzi.keySet().stream().sorted().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+						message.setText(t);
+						break;
+					case "/azzerra":
+						if(amministratore){
+							classi.get(classe).lista = new LinkedList<String>();
+							classi.get(classe).totale = 0.0;
+							classi.get(classe).restoTotale = 0.0;
+							message.setText("Lista azzerata");
+						}else{
+							message.setText("Devi essere amministratore per farlo");
+						}
+						break;
+					default:
+						if(update.getMessage().getText().toLowerCase().equals(segreto)){
+							if(amministratore){
+								amministratore = false;
+								message.setText("Ora non sei più amministratore");
 							}else{
-								message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
+								amministratore = true;
+								message.setText("Ora sei amministratore");
 							}
-						}	
-					}
-            }            
+						}
+						else{
+							List<Object> prova = traduci(update.getMessage().getText());
+							String prodotto = prova.get(0).toString();
+							if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
+								message.setText("Scusa, non capisco");
+							}else{
+								Double pagato = Double.parseDouble(prova.get(1).toString());
+								if(resto(prodotto, pagato) >= 0){
+									message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
+									classi.get(classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
+									classi.get(classe).totale += pagato;
+									classi.get(classe).restoTotale += resto(prodotto, pagato);
+								}else{
+									message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
+								}
+							}	
+						}
+						riga.add(new KeyboardButton("/menu"));
+						riga.add(new KeyboardButton("/lista"));
+						riga.add(new KeyboardButton("/azzerra"));
+						riga2.add(new KeyboardButton("/esci"));	
+						tastiera.setKeyboard(List.of(riga, riga2));				
+						message.setReplyMarkup(tastiera);
+						break;
+				}
+			}    
+			else{
+				switch(update.getMessage().getText().toLowerCase()){
+					case "/start":
+						message.setText("Benvenuto! Come posso aiutarti?");
+						riga.add(pulsante);
+
+						tastiera.setKeyboard(List.of(riga));				
+						message.setReplyMarkup(tastiera);
+						break;
+					case "ciao":
+						message.setText("Ciao anche a te!");
+						break;
+					case "/accedi":
+						message.setText("Inserisci il nome della classe che vuoi creare o scegli quella a cui vuoi accedere");
+						if(classi.size() == 0){
+							ReplyKeyboardRemove tastieraa = new ReplyKeyboardRemove(true);
+							message.setReplyMarkup(tastieraa);
+						}else{
+							classi.keySet().stream().sorted().forEach(c -> riga.add(new KeyboardButton(c)));
+							tastiera.setKeyboard(List.of(riga));				
+							message.setReplyMarkup(tastiera);	
+						}
+						stato = "creazione";
+						break;
+				}        
+			}
         }else{
             message.setText("Scusa, non capisco");
         }

@@ -112,12 +112,9 @@ public class JavaBossBot extends TelegramLongPollingBot {
 
 	@Value("${segreto}") 
 	String segreto;
-	boolean amministratore = false;
-	String stato = "";
-	String classe;
-	boolean acceduto = false;
 	HashMap<String, Classe> classi = new HashMap<>();
 	HashMap<String, String> segreti = new HashMap<>();
+	HashMap<String, Utente> utenti = new HashMap<>();
 	public void onUpdateReceived(Update update) {
 		long chatId = update.getMessage().getChatId();
         SendMessage message = new SendMessage();
@@ -134,26 +131,26 @@ public class JavaBossBot extends TelegramLongPollingBot {
 		KeyboardButton pulsante = new KeyboardButton("/accedi");
 		
         if (update.hasMessage() && update.getMessage().hasText()) {
-			if(stato != ""){
-				switch (stato) {
-					case "creazione":
-						if(classi.get(update.getMessage().getText().toLowerCase()) == null){
-							classi.put(update.getMessage().getText().toLowerCase(), new Classe(update.getMessage().getText().toLowerCase()));
-							classe = update.getMessage().getText().toLowerCase();
-							message.setText("Classe " + update.getMessage().getText().toLowerCase() + " creata.\nOra crea il codice per accederci");
-							stato = "creazione2";
+			if(utenti.get(update.getMessage().getFrom().getUserName()) != null && utenti.get(update.getMessage().getFrom().getUserName()).stato != null){
+				switch (utenti.get(update.getMessage().getFrom().getUserName()).stato) {
+					case creazione:
+						if(classi.get(update.getMessage().getText().toUpperCase()) == null){
+							classi.put(update.getMessage().getText().toUpperCase(), new Classe(update.getMessage().getText().toUpperCase()));
+							utenti.get(update.getMessage().getFrom().getUserName()).classe = update.getMessage().getText().toUpperCase();
+							message.setText("Classe " + update.getMessage().getText().toUpperCase() + " creata.\nOra crea il codice per accederci");
+							utenti.get(update.getMessage().getFrom().getUserName()).stato = Stato.creazione2;
 						}else{
-							message.setText("Ora inserisci il codice per " + update.getMessage().getText().toLowerCase());
-							classe = update.getMessage().getText().toLowerCase();
-							stato = "segreto";
+							message.setText("Ora inserisci il codice per " + update.getMessage().getText().toUpperCase());
+							utenti.get(update.getMessage().getFrom().getUserName()).classe = update.getMessage().getText().toUpperCase();
+							utenti.get(update.getMessage().getFrom().getUserName()).stato = Stato.segreto;
 						}
 						ReplyKeyboardRemove tastieraa = new ReplyKeyboardRemove(true);
 						message.setReplyMarkup(tastieraa);
 						break;
-					case "creazione2":
-						segreti.put(classe, update.getMessage().getText().toLowerCase());
-						acceduto = true;
-						stato = "";
+					case creazione2:
+						segreti.put(utenti.get(update.getMessage().getFrom().getUserName()).classe, update.getMessage().getText().toUpperCase());
+						utenti.get(update.getMessage().getFrom().getUserName()).acceduto = true;
+						utenti.get(update.getMessage().getFrom().getUserName()).stato = null;
 						riga.add(new KeyboardButton("/menu"));
 						riga.add(new KeyboardButton("/lista"));
 						riga.add(new KeyboardButton("/azzerra"));	
@@ -163,10 +160,10 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						message.setReplyMarkup(tastiera);
 						message.setText("Fatto");
 						break;
-					case "segreto":
-						if(update.getMessage().getText().toLowerCase().equals(segreti.get(classe))){
+					case segreto:
+						if(update.getMessage().getText().toUpperCase().equals(segreti.get(utenti.get(update.getMessage().getFrom().getUserName()).classe))){
 							message.setText("Acceduto con successo");
-							acceduto = true;
+							utenti.get(update.getMessage().getFrom().getUserName()).acceduto = true;
 							riga.add(new KeyboardButton("/menu"));
 							riga.add(new KeyboardButton("/lista"));
 							riga.add(new KeyboardButton("/azzerra"));	
@@ -174,7 +171,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 							riga.remove(pulsante);
 							tastiera.setKeyboard(List.of(riga, riga2));
 							message.setReplyMarkup(tastiera);
-							stato = "";
+							utenti.get(update.getMessage().getFrom().getUserName()).stato = null;
 						}else{
 							message.setText("Riprova");
 						}
@@ -182,7 +179,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 					default:
 						break;
 					}
-			}else if(acceduto){
+			}else if(utenti.get(update.getMessage().getFrom().getUserName()) != null && utenti.get(update.getMessage().getFrom().getUserName()).acceduto){
 				switch(update.getMessage().getText().toLowerCase()){
 					case "/start":
 						message.setText("Benvenuto! Come posso aiutarti?");
@@ -192,19 +189,19 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						message.setText("Ciao anche a te!");
 						break;
 					case "/esci":
-						message.setText("Disconesso da " + classe);
-						classe = null;
-						acceduto = false;
+						message.setText("Disconesso da " + utenti.get(update.getMessage().getFrom().getUserName()).classe);
+						utenti.get(update.getMessage().getFrom().getUserName()).classe = null;
+						utenti.get(update.getMessage().getFrom().getUserName()).acceduto = false;
 						riga.add(new KeyboardButton("/accedi"));
 						tastiera.setKeyboard(List.of(riga));
 						message.setReplyMarkup(tastiera);
 						break;
 					case "/lista":
-						if(classi.get(classe).lista.size() <= 0){
+						if(classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.size() <= 0){
 							message.setText("Lista vuota");
 						}else{
-							t = classi.get(classe).lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
-							t += "\nTotale pagato: €" + classi.get(classe).totale + "0\nTotale da pagare: €" + (classi.get(classe).totale - classi.get(classe).restoTotale) + "0\nResto totale: €" + (classi.get(classe).restoTotale) + "0"; 
+							t = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+							t += "\nTotale pagato: €" + classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale + "0\nTotale da pagare: €" + (classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale - classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale) + "0\nResto totale: €" + (classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale) + "0"; 
 							message.setText(t);
 							break;
 						}
@@ -214,10 +211,10 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						message.setText(t);
 						break;
 					case "/azzerra":
-						if(amministratore){
-							classi.get(classe).lista = new LinkedList<String>();
-							classi.get(classe).totale = 0.0;
-							classi.get(classe).restoTotale = 0.0;
+						if(utenti.get(update.getMessage().getFrom().getUserName()).amministratore){
+							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista = new LinkedList<String>();
+							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale = 0.0;
+							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale = 0.0;
 							message.setText("Lista azzerata");
 						}else{
 							message.setText("Devi essere amministratore per farlo");
@@ -225,11 +222,11 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						break;
 					default:
 						if(update.getMessage().getText().toLowerCase().equals(segreto)){
-							if(amministratore){
-								amministratore = false;
+							if(utenti.get(update.getMessage().getFrom().getUserName()).amministratore){
+								utenti.get(update.getMessage().getFrom().getUserName()).amministratore = false;
 								message.setText("Ora non sei più amministratore");
 							}else{
-								amministratore = true;
+								utenti.get(update.getMessage().getFrom().getUserName()).amministratore = true;
 								message.setText("Ora sei amministratore");
 							}
 						}
@@ -242,9 +239,9 @@ public class JavaBossBot extends TelegramLongPollingBot {
 								Double pagato = Double.parseDouble(prova.get(1).toString());
 								if(resto(prodotto, pagato) >= 0){
 									message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
-									classi.get(classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
-									classi.get(classe).totale += pagato;
-									classi.get(classe).restoTotale += resto(prodotto, pagato);
+									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
+									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
+									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
 								}else{
 									message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
 								}
@@ -263,8 +260,11 @@ public class JavaBossBot extends TelegramLongPollingBot {
 				switch(update.getMessage().getText().toLowerCase()){
 					case "/start":
 						message.setText("Benvenuto! Come posso aiutarti?");
-						riga.add(pulsante);
+						if(utenti.get(update.getMessage().getFrom().getUserName()) == null){
+							utenti.put(update.getMessage().getFrom().getUserName(), new Utente());
+						}
 
+						riga.add(pulsante);
 						tastiera.setKeyboard(List.of(riga));				
 						message.setReplyMarkup(tastiera);
 						break;
@@ -281,7 +281,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 							tastiera.setKeyboard(List.of(riga));				
 							message.setReplyMarkup(tastiera);	
 						}
-						stato = "creazione";
+						utenti.get(update.getMessage().getFrom().getUserName()).stato = Stato.creazione;
 						break;
 				}        
 			}

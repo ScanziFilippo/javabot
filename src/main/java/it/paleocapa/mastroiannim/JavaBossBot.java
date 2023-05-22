@@ -70,6 +70,17 @@ public class JavaBossBot extends TelegramLongPollingBot {
 			return Arrays.asList(prodotto.toLowerCase(), null);
 		}
 	}
+	public String traduciRimozione(String stringa){
+		String prodotto = "";
+		int i;
+		for(i = 0; i < stringa.length(); i++){
+			if(stringa.charAt(i) == ' ')break;
+		}
+		for(i = i+1; i < stringa.length(); i++){
+			prodotto += stringa.charAt(i);
+		}
+		return prodotto.toLowerCase();
+	}
 	Map<String, Double> prezzi = Map.ofEntries(
 			entry("brioche-cioccolato", 0.90), 
 			entry("brioche-marmellata", 0.90), 
@@ -200,7 +211,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						if(classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.size() <= 0){
 							message.setText("Lista vuota");
 						}else{
-							t = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+							t = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().map(Prodotto::prodotto).reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
 							t += "\nTotale pagato: €" + classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale + "0\nTotale da pagare: €" + (classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale - classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale) + "0\nResto totale: €" + (classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale) + "0"; 
 							message.setText(t);
 							break;
@@ -212,7 +223,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						break;
 					case "/azzerra":
 						if(utenti.get(update.getMessage().getFrom().getUserName()).amministratore){
-							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista = new LinkedList<String>();
+							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista = new LinkedList<Prodotto>();
 							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale = 0.0;
 							classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale = 0.0;
 							message.setText("Lista azzerata");
@@ -233,22 +244,41 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						else{
 							List<Object> prova = traduci(update.getMessage().getText());
 							String prodotto = prova.get(0).toString();
-							if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
-								message.setText("Prezzo non valido");
-							}else{
-								Double pagato = Double.parseDouble(prova.get(1).toString());
-								if(resto(prodotto, pagato) > 0){
-									message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
-									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
-									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
-									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
-								}else if(resto(prodotto, pagato) == 0){
-									message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nNiente resto");
-									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
-									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
-									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
+							if(prodotto.equals("rimuovi")){
+								final String prodottoo = traduciRimozione(update.getMessage().getText());
+								if(prezzi.get(prodottoo) == null){
+									message.setText("Prodotto non valido.");
 								}else{
-									message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
+									Prodotto pro = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName()) && p.nomeProdotto.equals(prodottoo)).findFirst().orElse(null);
+									if(pro == null){
+										message.setText("Non hai comprato " + prodottoo);
+									}else{
+										message.setText("Bene, tolgo " + prodottoo + "\nStai riprendendo €" + pro.prezzo + "0\n");
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.remove(pro);
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale -= pro.prezzo;
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale -= pro.resto;
+									}
+								}
+							}else{
+								if(prezzi.get(prodotto) == null){
+									message.setText("Prodotto non valido.");
+								}else if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
+									message.setText("Prezzo non valido.");
+								}else{
+									Double pagato = Double.parseDouble(prova.get(1).toString());
+									if(resto(prodotto, pagato) > 0){
+										message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(new Prodotto(prodotto, update.getMessage().getFrom().getUserName(), update.getMessage().getFrom().getFirstName(), pagato, resto(prodotto, pagato)));
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
+									}else if(resto(prodotto, pagato) == 0){
+										message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nNiente resto");
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(new Prodotto(prodotto, update.getMessage().getFrom().getUserName(), update.getMessage().getFrom().getFirstName(), pagato, resto(prodotto, pagato)));
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
+										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
+									}else{
+										message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
+									}
 								}
 							}
 						}

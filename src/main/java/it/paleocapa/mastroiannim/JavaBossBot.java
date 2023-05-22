@@ -139,6 +139,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 
 		KeyboardRow riga = new KeyboardRow();
 		KeyboardRow riga2 = new KeyboardRow();
+		KeyboardRow riga3 = new KeyboardRow();
 		KeyboardButton pulsante = new KeyboardButton("/accedi");
 		
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -164,10 +165,12 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						utenti.get(update.getMessage().getFrom().getUserName()).stato = null;
 						riga.add(new KeyboardButton("/menu"));
 						riga.add(new KeyboardButton("/lista"));
-						riga.add(new KeyboardButton("/azzerra"));	
-						riga2.add(new KeyboardButton("/esci"));	
+						riga.add(new KeyboardButton("/azzerra"));
+						riga2.add(new KeyboardButton("/me"));
+						riga2.add(new KeyboardButton("/ghiaccia"));
+						riga3.add(new KeyboardButton("/esci"));	
 						riga.remove(pulsante);
-						tastiera.setKeyboard(List.of(riga, riga2));
+						tastiera.setKeyboard(List.of(riga, riga2, riga3));
 						message.setReplyMarkup(tastiera);
 						message.setText("Fatto");
 						break;
@@ -177,10 +180,12 @@ public class JavaBossBot extends TelegramLongPollingBot {
 							utenti.get(update.getMessage().getFrom().getUserName()).acceduto = true;
 							riga.add(new KeyboardButton("/menu"));
 							riga.add(new KeyboardButton("/lista"));
-							riga.add(new KeyboardButton("/azzerra"));	
-							riga2.add(new KeyboardButton("/esci"));	
+							riga.add(new KeyboardButton("/azzerra"));
+							riga2.add(new KeyboardButton("/me"));
+							riga2.add(new KeyboardButton("/ghiaccia"));
+							riga3.add(new KeyboardButton("/esci"));
 							riga.remove(pulsante);
-							tastiera.setKeyboard(List.of(riga, riga2));
+							tastiera.setKeyboard(List.of(riga, riga2, riga3));
 							message.setReplyMarkup(tastiera);
 							utenti.get(update.getMessage().getFrom().getUserName()).stato = null;
 						}else{
@@ -231,6 +236,29 @@ public class JavaBossBot extends TelegramLongPollingBot {
 							message.setText("Devi essere amministratore per farlo");
 						}
 						break;
+					case "/me":
+						if(classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName())).count() <= 0){
+							message.setText("Non hai comprato niente");
+						}else{
+							t = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName())).map(Prodotto::prodotto).reduce("Lista:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+							t += "\nTotale pagato: €" + classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName())).mapToDouble(p -> p.prezzo).sum() + "0\nTotale da pagare: €" + (classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName())).mapToDouble(p -> p.prezzo).sum() - classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName())).mapToDouble(p -> p.resto).sum()) + "0\nResto totale: €" + (classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName())).mapToDouble(p -> p.resto).sum()) + "0";
+							message.setText(t);
+						}
+						break;
+					case "/ghiaccia":
+						if(utenti.get(update.getMessage().getFrom().getUserName()).amministratore){
+							//classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata ? {false; message.setText("")} : true;
+							if(classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata){
+								classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata = false;
+								message.setText("Lista sghiacciata");
+							}else{
+								classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata = true;
+								message.setText("Lista ghiacciata");
+							}
+						}else{
+							message.setText("Devi essere amministratore per farlo");
+						}
+						break;
 					default:
 						if(update.getMessage().getText().toLowerCase().equals(segreto)){
 							if(utenti.get(update.getMessage().getFrom().getUserName()).amministratore){
@@ -248,7 +276,7 @@ public class JavaBossBot extends TelegramLongPollingBot {
 								final String prodottoo = traduciRimozione(update.getMessage().getText());
 								if(prezzi.get(prodottoo) == null){
 									message.setText("Prodotto non valido.");
-								}else{
+								}else if(!classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata){
 									Prodotto pro = classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.stream().filter(p -> p.nomeUtente.equals(update.getMessage().getFrom().getUserName()) && p.nomeProdotto.equals(prodottoo)).findFirst().orElse(null);
 									if(pro == null){
 										message.setText("Non hai comprato " + prodottoo);
@@ -258,13 +286,15 @@ public class JavaBossBot extends TelegramLongPollingBot {
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale -= pro.prezzo;
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale -= pro.resto;
 									}
+								}else{
+									message.setText("La lista è ghiacciata, non puoi rimuovere prodotti.");
 								}
 							}else{
 								if(prezzi.get(prodotto) == null){
 									message.setText("Prodotto non valido.");
 								}else if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
 									message.setText("Prezzo non valido.");
-								}else{
+								}else if(!classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata){
 									Double pagato = Double.parseDouble(prova.get(1).toString());
 									if(resto(prodotto, pagato) > 0){
 										message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
@@ -279,14 +309,17 @@ public class JavaBossBot extends TelegramLongPollingBot {
 									}else{
 										message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
 									}
+								}else{
+									message.setText("La lista è ghiacciata, non puoi aggiungere prodotti.");
 								}
 							}
 						}
 						riga.add(new KeyboardButton("/menu"));
 						riga.add(new KeyboardButton("/lista"));
 						riga.add(new KeyboardButton("/azzerra"));
-						riga2.add(new KeyboardButton("/esci"));	
-						tastiera.setKeyboard(List.of(riga, riga2));				
+						riga2.add(new KeyboardButton("/me"));
+						riga2.add(new KeyboardButton("/ghiaccia"));
+						riga3.add(new KeyboardButton("/esci"));						tastiera.setKeyboard(List.of(riga, riga2, riga3));				
 						message.setReplyMarkup(tastiera);
 						break;
 				}

@@ -7,6 +7,7 @@ public class Classe {
 	Double restoTotale = 0.0;
 	LinkedList<Prodotto> lista = new LinkedList<Prodotto>();
     String classe;
+    Boolean ghiacciata = false;
     public Classe(String classe){
         this.classe = classe;
     }

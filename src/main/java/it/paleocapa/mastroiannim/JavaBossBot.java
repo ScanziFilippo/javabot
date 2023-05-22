@@ -234,18 +234,23 @@ public class JavaBossBot extends TelegramLongPollingBot {
 							List<Object> prova = traduci(update.getMessage().getText());
 							String prodotto = prova.get(0).toString();
 							if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
-								message.setText("Scusa, non capisco");
+								message.setText("Prezzo non valido");
 							}else{
 								Double pagato = Double.parseDouble(prova.get(1).toString());
-								if(resto(prodotto, pagato) >= 0){
+								if(resto(prodotto, pagato) > 0){
 									message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
+									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
+									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
+									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
+								}else if(resto(prodotto, pagato) == 0){
+									message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nNiente resto");
 									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(prodotto + " per " + update.getMessage().getFrom().getFirstName());
 									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
 									classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
 								}else{
 									message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
 								}
-							}	
+							}
 						}
 						riga.add(new KeyboardButton("/menu"));
 						riga.add(new KeyboardButton("/lista"));

@@ -8,11 +8,6 @@ public class DockerHomeController {
 
     @GetMapping("/")
     public String home() {
-        return "Home!";
-    }
-
-    @GetMapping("/list")
-    public String list() {
-        return "pizza, panini!";
+        return "Bot avviato";
     }
 }

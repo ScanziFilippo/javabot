@@ -79,8 +79,48 @@ public class JavaBossBot extends TelegramLongPollingBot {
 		for(i = i+1; i < stringa.length(); i++){
 			prodotto += stringa.charAt(i);
 		}
+		if(numeri.get(prodotto) != null){
+			prodotto = numeri.get(prodotto);
+		}
 		return prodotto.toLowerCase();
 	}
+	Map<String, String> numeri = Map.ofEntries(
+		entry("1", "bottiglia-acqua-frizzante"),
+		entry("2", "bottiglia-acqua-naturale"),
+		entry("3", "bottiglia-pepsi"),
+		entry("4", "bottiglia-pepsi-limone"),
+		entry("5", "bottiglia-the-san-benedetto-limone"),
+		entry("6", "bottiglia-the-san-benedetto-pesca"),
+		entry("7", "brioche-cioccolato"),
+		entry("8", "brioche-marmellata"),
+		entry("9", "brioche-vuota"),
+		entry("10", "calzone"),
+		entry("11", "hamburger"),
+		entry("12", "lattina-pepsi-limone"),
+		entry("13", "lattina-the-san-benedetto-limone"),
+		entry("14", "lattina-the-san-benedetto-pesca"),
+		entry("15", "menu-cotoletta"),
+		entry("16", "menu-insalata"),
+		entry("17", "menu-lasagna"),
+		entry("18", "menu-pasta"),
+		entry("19", "menu-pizza-bibita"),
+		entry("20", "menu-riso"),
+		entry("21", "panino-cordon-bleau"),
+		entry("22", "panino-cotoletta"),
+		entry("23", "panino-gourmet"),
+		entry("24", "panino-wurstel"),
+		entry("25", "panzerotto"),
+		entry("26", "piadina-cotoletta-patatine-ketchup"),
+		entry("27", "piadina-cotoletta-patatine-mayo"),
+		entry("28", "piadina-cootto-fontina"),
+		entry("29", "piadina-wurstel-patatine-ketchup"),
+		entry("30", "piadina-wurstel-patatine-mayo"),
+		entry("31", "pizza-piegata"),
+		entry("32", "speck-brie"),
+		entry("33", "toast-patate"),
+		entry("34", "ventaglio")
+	);
+
 	Map<String, Double> prezzi = Map.ofEntries(
 			entry("brioche-cioccolato", 0.90), 
 			entry("brioche-marmellata", 0.90), 
@@ -223,7 +263,9 @@ public class JavaBossBot extends TelegramLongPollingBot {
 						}
 						break;
 					case "/menu":
-						t = prezzi.keySet().stream().sorted().reduce("Menu:\n", (subtotal, element) -> subtotal +  " - " + element + "\n");
+						t = numeri .keySet().stream().map(Integer::parseInt).sorted().map(p -> p.toString()).reduce("Menu:\n", (subtotal, element) -> subtotal + element.toString() + " - " + numeri.get(element) + "\n");
+						//t = numeri.keySet().stream()..(p -> p).sorted().reduce("Menu:\n", (subtotal, element) -> subtotal + element.toString() + " - " + numeri.get(element) + "\n"); 
+						//t = prezzi.keySet().stream().sorted().reduce("Menu:\n", (subtotal, element) -> subtotal + " - " + element + "\n");
 						message.setText(t);
 						break;
 					case "/azzerra":
@@ -290,24 +332,27 @@ public class JavaBossBot extends TelegramLongPollingBot {
 									message.setText("La lista è ghiacciata, non puoi rimuovere prodotti.");
 								}
 							}else{
+								if(numeri.get(prodotto) != null){
+									prodotto = numeri.get(prodotto);
+								}
 								if(prezzi.get(prodotto) == null){
 									message.setText("Prodotto non valido.");
-								}else if(prova.get(1) == null || prezzi.get(prova.get(0)) == null){
+								}else if(prova.get(1) == null){
 									message.setText("Prezzo non valido.");
 								}else if(!classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).ghiacciata){
 									Double pagato = Double.parseDouble(prova.get(1).toString());
 									if(resto(prodotto, pagato) > 0){
-										message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
+										message.setText("Bene, aggiungo " + prodotto + "\nStai pagando €" + prova.get(1) + "0\nAvrai di resto €" + resto(prodotto, pagato)+"0");
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(new Prodotto(prodotto, update.getMessage().getFrom().getUserName(), update.getMessage().getFrom().getFirstName(), pagato, resto(prodotto, pagato)));
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
 									}else if(resto(prodotto, pagato) == 0){
-										message.setText("Bene, aggiungo " + prova.get(0) + "\nStai pagando €" + prova.get(1) + "0\nNiente resto");
+										message.setText("Bene, aggiungo " + prodotto + "\nStai pagando €" + prova.get(1) + "0\nNiente resto");
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).lista.add(new Prodotto(prodotto, update.getMessage().getFrom().getUserName(), update.getMessage().getFrom().getFirstName(), pagato, resto(prodotto, pagato)));
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).totale += pagato;
 										classi.get(utenti.get(update.getMessage().getFrom().getUserName()).classe).restoTotale += resto(prodotto, pagato);
 									}else{
-										message.setText("Male, il prezzo è €" + prezzi.get(prova.get(0)) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
+										message.setText("Male, il prezzo è €" + prezzi.get(prodotto) + "0 ma vuoi pagare solo con €" + prova.get(1) + "0 😠");
 									}
 								}else{
 									message.setText("La lista è ghiacciata, non puoi aggiungere prodotti.");
